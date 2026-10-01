@@ -1,0 +1,140 @@
+<UserControl x:Class="MyDicomViewer.Views.DicomViewport"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+             xmlns:vm="clr-namespace:MyDicomViewer.ViewModels"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=vm:MainViewModel}">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVisibility"/>
+        <Style x:Key="CornerText" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{StaticResource Brush.Text}"/>
+            <Setter Property="FontFamily" Value="{StaticResource Font.Readout}"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="LineHeight" Value="18"/>
+            <Setter Property="Margin" Value="12,10"/>
+            <Setter Property="IsHitTestVisible" Value="False"/>
+            <Setter Property="Effect">
+                <Setter.Value>
+                    <DropShadowEffect ShadowDepth="1" BlurRadius="2" Opacity="0.9" Color="Black"/>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <!-- マウス操作（ズーム・移動・計測・濃度調整）とドラッグ＆ドロップを受け付ける領域 -->
+    <Grid x:Name="Host" Background="Black" ClipToBounds="True" AllowDrop="True" Focusable="True"
+          MouseWheel="Host_MouseWheel"
+          MouseLeftButtonDown="Host_MouseLeftButtonDown" MouseLeftButtonUp="Host_MouseLeftButtonUp"
+          MouseRightButtonDown="Host_MouseRightButtonDown" MouseRightButtonUp="Host_MouseRightButtonUp"
+          MouseMove="Host_MouseMove" LostMouseCapture="Host_LostMouseCapture"
+          DragOver="Host_DragOver" Drop="Host_Drop">
+
+        <!-- 画像・ヒートマップ・計測線を同じ座標（画像の画素単位）に重ね、まとめて拡大・移動する -->
+        <!-- Margin を付けないこと: 拡大の中心計算は Host と Viewbox の座標が一致している前提 -->
+        <Viewbox x:Name="ImageViewbox" Stretch="Uniform">
+            <Viewbox.RenderTransform>
+                <MatrixTransform x:Name="ViewTransform"/>
+            </Viewbox.RenderTransform>
+            <Grid x:Name="ImageLayer" Width="{Binding ImageWidth}" Height="{Binding ImageHeight}">
+                <Image Source="{Binding DisplayImage}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality"/>
+                <Grid IsHitTestVisible="False" Visibility="{Binding IsHeatmapVisible, Converter={StaticResource BoolToVisibility}}">
+                    <Grid.Style>
+                        <Style TargetType="Grid">
+                            <Style.Triggers>
+                                <MultiDataTrigger>
+                                    <MultiDataTrigger.Conditions>
+                                        <Condition Binding="{Binding IsHeatmapVisible}" Value="True"/>
+                                        <Condition Binding="{Binding Source={x:Static SystemParameters.ClientAreaAnimation}}" Value="True"/>
+                                    </MultiDataTrigger.Conditions>
+                                    <MultiDataTrigger.EnterActions>
+                                        <BeginStoryboard>
+                                            <Storyboard>
+                                                <DoubleAnimation Storyboard.TargetProperty="Opacity" From="0" To="1" Duration="0:0:0.45">
+                                                    <DoubleAnimation.EasingFunction>
+                                                        <CubicEase EasingMode="EaseOut"/>
+                                                    </DoubleAnimation.EasingFunction>
+                                                </DoubleAnimation>
+                                            </Storyboard>
+                                        </BeginStoryboard>
+                                    </MultiDataTrigger.EnterActions>
+                                </MultiDataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Grid.Style>
+                    <Image Source="{Binding HeatmapImage}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" Opacity="{Binding HeatmapOpacity}"/>
+                </Grid>
+                <ItemsControl ItemsSource="{Binding Measurements}" IsHitTestVisible="False">
+                    <ItemsControl.ItemsPanel>
+                        <ItemsPanelTemplate>
+                            <Canvas/>
+                        </ItemsPanelTemplate>
+                    </ItemsControl.ItemsPanel>
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <Canvas>
+                                <Line X1="{Binding X1}" Y1="{Binding Y1}" X2="{Binding X2}" Y2="{Binding Y2}" Stroke="{StaticResource Brush.Annotation}"
+                                      StrokeStartLineCap="Round" StrokeEndLineCap="Round"
+                                      StrokeThickness="{Binding DataContext.OverlayStrokeThickness, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                <Border Canvas.Left="{Binding LabelX}" Canvas.Top="{Binding LabelY}" Background="#C0000000" CornerRadius="3" Padding="5,1">
+                                    <TextBlock Text="{Binding Label}" Foreground="{StaticResource Brush.Annotation}" FontFamily="{StaticResource Font.Readout}"
+                                               FontSize="{Binding DataContext.OverlayFontSize, RelativeSource={RelativeSource AncestorType=ItemsControl}}"/>
+                                </Border>
+                            </Canvas>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+            </Grid>
+        </Viewbox>
+
+        <!-- 四隅の情報 -->
+        <TextBlock Style="{StaticResource CornerText}" Text="{Binding OverlayTopLeft}" HorizontalAlignment="Left" VerticalAlignment="Top"/>
+        <TextBlock Style="{StaticResource CornerText}" Text="{Binding OverlayTopRight}" HorizontalAlignment="Right" VerticalAlignment="Top" TextAlignment="Right"/>
+        <TextBlock Style="{StaticResource CornerText}" Text="{Binding OverlayBottomLeft}" HorizontalAlignment="Left" VerticalAlignment="Bottom"/>
+        <TextBlock Style="{StaticResource CornerText}" Text="{Binding OverlayBottomRight}" HorizontalAlignment="Right" VerticalAlignment="Bottom" TextAlignment="Right"/>
+
+        <!-- 画像が無いときの案内 -->
+        <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center" IsHitTestVisible="False">
+            <StackPanel.Style>
+                <Style TargetType="StackPanel">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding HasImage}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </StackPanel.Style>
+            <ContentControl Style="{StaticResource LogoMark}" Width="56" Height="56" Opacity="0.9"/>
+            <TextBlock Text="ここに DICOM ファイルかフォルダをドロップ" FontSize="17" Foreground="{StaticResource Brush.TextMuted}"
+                       HorizontalAlignment="Center" Margin="0,18,0,0"/>
+            <Grid Margin="0,22,0,0" HorizontalAlignment="Center">
+                <Grid.Resources>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="FontSize" Value="12"/>
+                        <Setter Property="Foreground" Value="{StaticResource Brush.TextFaint}"/>
+                        <Setter Property="Margin" Value="0,3"/>
+                    </Style>
+                </Grid.Resources>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                    <RowDefinition/>
+                </Grid.RowDefinitions>
+                <TextBlock Grid.Row="0" Text="ホイール" Foreground="{StaticResource Brush.TextMuted}" Margin="0,3,18,3"/>
+                <TextBlock Grid.Row="0" Grid.Column="1" Text="スライス送り（Ctrl を押しながらで拡大縮小）"/>
+                <TextBlock Grid.Row="1" Text="左ドラッグ" Foreground="{StaticResource Brush.TextMuted}" Margin="0,3,18,3"/>
+                <TextBlock Grid.Row="1" Grid.Column="1" Text="移動、または計測"/>
+                <TextBlock Grid.Row="2" Text="右ドラッグ" Foreground="{StaticResource Brush.TextMuted}" Margin="0,3,18,3"/>
+                <TextBlock Grid.Row="2" Grid.Column="1" Text="濃度の調整"/>
+                <TextBlock Grid.Row="3" Text="ダブルクリック" Foreground="{StaticResource Brush.TextMuted}" Margin="0,3,18,3"/>
+                <TextBlock Grid.Row="3" Grid.Column="1" Text="全体表示に戻す"/>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</UserControl>

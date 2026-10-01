@@ -1,0 +1,35 @@
+<Window x:Class="MyDicomViewer.Views.TagViewerWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="DICOM タグ一覧" Height="720" Width="1000" WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Brush.Panel}" Foreground="{StaticResource Brush.Text}"
+        FontFamily="{StaticResource Font.Ui}" FontSize="13" UseLayoutRounding="True">
+    <DockPanel Margin="16">
+        <Grid DockPanel.Dock="Top" Margin="0,0,0,12">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Grid>
+                <TextBox x:Name="FilterBox" Padding="32,7,8,7" TextChanged="FilterBox_TextChanged"/>
+                <Path Style="{StaticResource Icon}" Data="{StaticResource Icon.Search}" Stroke="{StaticResource Brush.TextFaint}"
+                      HorizontalAlignment="Left" Margin="10,0,0,0" IsHitTestVisible="False" Width="14" Height="14"/>
+            </Grid>
+            <TextBlock x:Name="CountText" Grid.Column="1" Style="{StaticResource Text.Readout}" Foreground="{StaticResource Brush.TextMuted}"
+                       VerticalAlignment="Center" Margin="14,0,4,0"/>
+        </Grid>
+        <TextBlock DockPanel.Dock="Bottom" Style="{StaticResource Text.Caption}" Margin="0,10,0,0"
+                   Text="タグ番号・名前・値で絞り込めます（例: 0010、Patient、Spacing）。行を選んで Ctrl+C でコピーできます。"/>
+        <Border BorderBrush="{StaticResource Brush.Line}" BorderThickness="1" CornerRadius="6" ClipToBounds="True">
+            <DataGrid x:Name="TagGrid" AutoGenerateColumns="False" IsReadOnly="True" BorderThickness="0"
+                      ClipboardCopyMode="IncludeHeader" EnableRowVirtualization="True" FontSize="12.5">
+                <DataGrid.Columns>
+                    <DataGridTextColumn Header="タグ" Binding="{Binding Tag}" Width="110" FontFamily="{StaticResource Font.Readout}"/>
+                    <DataGridTextColumn Header="名前" Binding="{Binding IndentedName}" Width="300"/>
+                    <DataGridTextColumn Header="VR" Binding="{Binding Vr}" Width="50" FontFamily="{StaticResource Font.Readout}"/>
+                    <DataGridTextColumn Header="値" Binding="{Binding Value}" Width="*"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Border>
+    </DockPanel>
+</Window>

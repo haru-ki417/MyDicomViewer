@@ -1,0 +1,14 @@
+<Application x:Class="MyDicomViewer.App"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             ShutdownMode="OnMainWindowClose">
+    <!-- 起動処理（依存関係の組み立て・初回の同意・例外処理）は App.xaml.cs の OnStartup で行う -->
+    <Application.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <!-- 配色・文字・部品・アイコンの共通テーマ（全ウィンドウで共有） -->
+                <ResourceDictionary Source="Themes/Theme.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Application.Resources>
+</Application>

@@ -1,0 +1,5 @@
+<Solution>
+  <Project Path="MyDicomViewer/MyDicomViewer.csproj" />
+  <Project Path="MyDicomViewer.Core/MyDicomViewer.Core.csproj" />
+  <Project Path="MyDicomViewer.Tests/MyDicomViewer.Tests.csproj" />
+</Solution>

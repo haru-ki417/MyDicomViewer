@@ -1,0 +1,25 @@
+{
+  "model": "efficientnet_b0",
+  "task": "pneumonia (RSNA Target=1) vs. no pneumonia",
+  "input": {
+    "size": 224,
+    "channels": 3,
+    "mean": [
+      0.485,
+      0.456,
+      0.406
+    ],
+    "std": [
+      0.229,
+      0.224,
+      0.225
+    ],
+    "preprocessing": "see preprocess.py: rescale -> MONOCHROME1 invert -> min-max -> resize(INTER_AREA)"
+  },
+  "outputs": {
+    "prob": "sigmoid probability, shape (N,1)",
+    "cam": "Grad-CAM in [0,1], shape (N,1,H,W)"
+  },
+  "threshold": 0.540887176990509,
+  "disclaimer": "研究・学習目的。診断には使用不可。"
+}

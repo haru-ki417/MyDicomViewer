@@ -1,0 +1,41 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UseWPF>true</UseWPF>
+    <!-- インストーラー（Velopack）の処理を最初に行うため、独自の Main から起動する -->
+    <StartupObject>MyDicomViewer.Program</StartupObject>
+    <!-- アプリのアイコン（ウィンドウ・タスクバー・インストーラーに使われる） -->
+    <ApplicationIcon>Assets\app.ico</ApplicationIcon>
+
+    <!-- 製品情報（バージョン情報画面・インストーラー・自動更新で使う） -->
+    <Product>MyDicomViewer</Product>
+    <Company>Haruki Takahashi</Company>
+    <Copyright>© 2026 Haruki Takahashi</Copyright>
+    <Version>1.0.0</Version>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
+    <PackageReference Include="fo-dicom.Codecs" Version="5.16.7" />
+    <PackageReference Include="fo-dicom.Imaging.Desktop" Version="5.2.6" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.12" />
+    <PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.12" />
+    <PackageReference Include="Velopack" Version="1.2.161" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\MyDicomViewer.Core\MyDicomViewer.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- 学習済みモデル（pneumonia.onnx / model_meta.json）を出力フォルダへコピー -->
+    <None Update="Models\**" CopyToOutputDirectory="PreserveNewest" />
+    <!-- 開発用のローカル設定（キーを含む）。開発時の実行フォルダにはコピーするが、配布物には絶対に含めない -->
+    <None Update="appsettings.Local.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="Never" />
+  </ItemGroup>
+
+</Project>

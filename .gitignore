@@ -1,0 +1,36 @@
+# ---- 秘密情報（絶対に公開しない）
+appsettings.Local.json
+*.pfx
+.env
+
+# ---- 作業用バックアップ（旧ソースにキーが含まれている）
+_backup*/
+build.log
+
+# ---- 医療画像（患者情報を含む可能性があるため、リポジトリに入れない）
+*.dcm
+*.DCM
+
+# ---- AI モデル・学習成果物（大きいので GitHub Releases などで配布）
+*.onnx
+*.pt
+pneumonia-ai/outputs/
+pneumonia-ai/cache/
+__pycache__/
+
+# ---- Visual Studio / Rider / .NET
+.vs/
+.idea/
+bin/
+obj/
+*.user
+*.suo
+*.rsuser
+[Pp]ublish/
+
+# ---- テスト結果
+TestResults/
+artifacts/
+
+# ---- README 用のサンプル画像の作業フォルダ（NIH ChestX-ray14）
+_nih/

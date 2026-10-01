@@ -1,0 +1,67 @@
+<Window x:Class="MyDicomViewer.Views.SettingsWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="設定" Width="600" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner"
+        Background="{StaticResource Brush.Panel}" Foreground="{StaticResource Brush.Text}"
+        FontFamily="{StaticResource Font.Ui}" FontSize="13" UseLayoutRounding="True">
+    <Window.Resources>
+        <Style x:Key="Field" TargetType="TextBlock" BasedOn="{StaticResource Text.Label}">
+            <Setter Property="Margin" Value="0,0,0,6"/>
+        </Style>
+        <Style x:Key="Hint" TargetType="TextBlock" BasedOn="{StaticResource Text.Caption}">
+            <Setter Property="Margin" Value="0,5,0,14"/>
+        </Style>
+        <Style x:Key="Group" TargetType="TextBlock" BasedOn="{StaticResource Text.Section}">
+            <Setter Property="Margin" Value="0,6,0,12"/>
+        </Style>
+    </Window.Resources>
+
+    <StackPanel Margin="28,22,28,22">
+        <TextBlock Text="AI モデル" Style="{StaticResource Group}"/>
+        <TextBlock Text="モデルのフォルダ" Style="{StaticResource Field}"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <TextBox x:Name="ModelDirectoryBox"/>
+            <Button Grid.Column="1" Content="参照..." Margin="6,0,0,0" Click="BrowseModel_Click"/>
+        </Grid>
+        <TextBlock Style="{StaticResource Hint}" x:Name="ModelHint"
+                   Text="pneumonia.onnx と model_meta.json を置いたフォルダ。空欄なら、アプリと同じ場所の Models フォルダを使います。"/>
+
+        <Border Height="1" Background="{StaticResource Brush.Line}" Margin="0,4,0,16"/>
+
+        <TextBlock Text="Azure（クラウド保存）" Style="{StaticResource Group}"/>
+        <TextBlock Text="Blob Storage の接続文字列" Style="{StaticResource Field}"/>
+        <PasswordBox x:Name="BlobBox"/>
+        <TextBlock Style="{StaticResource Hint}" x:Name="BlobHint"/>
+        <TextBlock Text="Cosmos DB のエンドポイント" Style="{StaticResource Field}"/>
+        <TextBox x:Name="CosmosEndpointBox" Margin="0,0,0,14"/>
+        <TextBlock Text="Cosmos DB のキー" Style="{StaticResource Field}"/>
+        <PasswordBox x:Name="CosmosKeyBox"/>
+        <TextBlock Style="{StaticResource Hint}" x:Name="CosmosKeyHint"/>
+
+        <Border Height="1" Background="{StaticResource Brush.Line}" Margin="0,4,0,16"/>
+
+        <TextBlock Text="OpenAI（レポートの下書き）" Style="{StaticResource Group}"/>
+        <TextBlock Text="API キー" Style="{StaticResource Field}"/>
+        <PasswordBox x:Name="OpenAIKeyBox"/>
+        <TextBlock Style="{StaticResource Hint}" x:Name="OpenAIKeyHint"/>
+        <TextBlock Text="モデル名" Style="{StaticResource Field}"/>
+        <TextBox x:Name="OpenAIModelBox" Margin="0,0,0,14"/>
+
+        <Border Height="1" Background="{StaticResource Brush.Line}" Margin="0,4,0,16"/>
+
+        <CheckBox x:Name="CheckUpdatesBox" Content="起動時に新しい版を確認する"/>
+
+        <TextBlock Style="{StaticResource Text.Caption}" Margin="0,18,0,0"
+                   Text="キーは Windows のユーザーごとに暗号化して保存され、他のユーザーや他の PC では読み出せません。環境変数（MYDICOMVIEWER_ で始まるもの）が設定されている場合は、そちらが優先されます。"/>
+
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,22,0,0">
+            <Button Content="キャンセル" MinWidth="100" Margin="0,0,10,0" IsCancel="True"/>
+            <Button Style="{StaticResource Button.Primary}" Content="保存" MinWidth="100" IsDefault="True" Click="Save_Click"/>
+        </StackPanel>
+    </StackPanel>
+</Window>

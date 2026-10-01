@@ -1,0 +1,45 @@
+# GitHub Actions: 手動実行で、インストーラーを作って GitHub Releases に公開する
+# 使い方: このファイルを .github/workflows/release.yml に置き、
+#         GitHub の Actions タブ →「Release」→「Run workflow」
+# 公開すると、インストール済みのアプリが「ヘルプ → 更新を確認」で新しい版を検出できる。
+# ※ AI モデルはリポジトリに含めていないため同梱されない（設定画面でモデルのフォルダを指定して使う）
+name: Release
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Get version
+        id: version
+        shell: bash
+        run: echo "version=$(grep -oE '<Version>[^<]+' MyDicomViewer/MyDicomViewer.csproj | sed 's/<Version>//')" >> $GITHUB_OUTPUT
+
+      - name: Test
+        run: |
+          dotnet build MyDicomViewer.slnx --configuration Release
+          dotnet test --solution MyDicomViewer.slnx --configuration Release --no-build
+
+      - name: Publish
+        run: dotnet publish MyDicomViewer/MyDicomViewer.csproj -c Release -r win-x64 --self-contained true -o publish
+
+      - name: Create installer and upload release
+        run: |
+          dotnet tool install -g vpk --version 1.2.161
+          vpk download github --repoUrl https://github.com/${{ github.repository }}
+          vpk pack --packId MyDicomViewer --packVersion ${{ steps.version.outputs.version }} --packDir publish --mainExe MyDicomViewer.exe
+          vpk upload github --repoUrl https://github.com/${{ github.repository }} --publish --releaseName "MyDicomViewer ${{ steps.version.outputs.version }}" --tag v${{ steps.version.outputs.version }} --token ${{ secrets.GITHUB_TOKEN }}
