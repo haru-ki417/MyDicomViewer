@@ -65,10 +65,12 @@ MyDicomViewer/
 
 ## インストール（利用者向け）
 
-1. [Releases](https://github.com/haru-ki417/MyDicomViewer/releases) から `MyDicomViewer-win-Setup.exe` をダウンロードして実行
+1. [最新のリリース](https://github.com/haru-ki417/MyDicomViewer/releases/latest) から `MyDicomViewer-win-Setup.exe` をダウンロードして実行（インストール不要の `MyDicomViewer-win-Portable.zip` もあります）
+   - 署名していないため「Windows によって PC が保護されました」と表示された場合は、「詳細情報」→「実行」を選びます
 2. 初回起動時に利用上の注意を確認して同意
-3. AI スクリーニングを使う場合は、メニューの「ツール」→「設定」で AI モデルのフォルダを指定
-4. クラウド保存・AI レポートを使う場合は、同じ設定画面で Azure と OpenAI のキーを入力
+3. [samples](samples/) の見本 DICOM（CC0 の公開画像から作成、患者情報なし）を「ファイル」→「開く」かドラッグ＆ドロップで表示
+4. AI スクリーニングを使う場合は、メニューの「ツール」→「設定」で AI モデルのフォルダを指定（学習済みモデルは配布物に含めていません）
+5. クラウド保存・AI レポートを使う場合は、同じ設定画面で Azure と OpenAI のキーを入力
 
 新しい版は起動時に自動で確認されます（「ヘルプ」→「更新を確認」でも可能）。
 
