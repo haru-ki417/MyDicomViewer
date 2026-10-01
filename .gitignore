@@ -34,3 +34,6 @@ artifacts/
 
 # ---- README 用のサンプル画像の作業フォルダ（NIH ChestX-ray14）
 _nih/
+
+# ---- 見本の DICOM（CC0 の公開画像から作成、患者情報なし）は配布用に含める
+!samples/*.dcm
