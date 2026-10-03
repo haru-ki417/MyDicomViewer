@@ -1,0 +1,54 @@
+# ブラウザー版（Web 版）を作って GitHub Pages で公開する。
+# 画像の展開と AI の前処理を速くするため WebAssembly にあらかじめ翻訳（AOT）し、ダウンロードを小さくするため .gz も置く。
+# 見本の DICOM（samples/、CC0 の公開画像から作成・患者情報なし）も一緒に置く。AI の学習済みモデルは置かない。
+name: Web
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install WebAssembly tools
+        run: dotnet workload install wasm-tools
+
+      - name: Test (Core)
+        run: dotnet test --project MyDicomViewer.Tests/MyDicomViewer.Tests.csproj --configuration Release
+
+      - name: Publish
+        run: dotnet publish MyDicomViewer.Web/MyDicomViewer.Web.csproj -c Release -o out
+
+      - name: Prepare site
+        run: |
+          mkdir -p out/wwwroot/samples
+          cp samples/*.dcm out/wwwroot/samples/
+          cp out/wwwroot/index.html out/wwwroot/404.html
+          touch out/wwwroot/.nojekyll
+          if find out/wwwroot -name '*.onnx' | grep -q .; then echo "AI のモデルが紛れ込んでいます" && exit 1; fi
+
+      # 公開用の枝（gh-pages）に、できあがったものだけを置く（GitHub Pages はこの枝から公開する）
+      - name: Deploy to gh-pages
+        run: |
+          cd out/wwwroot
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Web 版を公開（${GITHUB_SHA::7}）"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages

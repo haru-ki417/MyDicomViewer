@@ -1,0 +1,176 @@
+@* 画像の表示。画素は C# で作り（濃度の処理は Windows 版と同じ ImageMath）、描くのは viewer.js *@
+@inherits WbComponent
+@implements IAsyncDisposable
+@inject IJSRuntime JS
+
+<div class="viewport">
+    <div class="view-host" id="@Id"></div>
+    @if (W.HasImage)
+    {
+        <div class="corner tl">@W.OverlayTopLeft</div>
+        <div class="corner tr">@W.OverlayTopRight</div>
+        <div class="corner bl">@W.OverlayBottomLeft</div>
+        <div class="corner br">@W.OverlayBottomRight</div>
+        @if (W.ShowHeatmap && W.Result is not null)
+        {
+            <div class="heat-legend"><span>弱</span><i></i><span>強</span></div>
+        }
+    }
+    @ChildContent
+</div>
+@if (W.HasImage && W.SliceCount > 1)
+{
+    <div class="slice-bar">
+        <button class="icon-btn" aria-label="前の画像" @onclick="() => W.StepSlice(-1)">‹</button>
+        <input type="range" class="range" min="0" max="@(W.SliceCount - 1)" step="1" value="@W.SliceIndex" @oninput="OnSlider" aria-label="画像の番号" />
+        <button class="icon-btn" aria-label="次の画像" @onclick="() => W.StepSlice(1)">›</button>
+        <span class="slice-num">@(W.SliceIndex + 1) / @W.SliceCount</span>
+    </div>
+}
+
+@code {
+    [Parameter] public RenderFragment? ChildContent { get; set; }
+
+    private const string Id = "viewer";
+    private IJSObjectReference? mod;
+    private DotNetObjectReference<ViewerPane>? self;
+    private bool ready, syncing, dirty;
+    private int sentImage = -1, sentWindow = -1, sentHeat = -1, sentClear, sentFit;
+    private string? sentTool, sentInfo, sentHeatStyle;
+
+    protected override void OnWorkbenchChanged()
+    {
+        base.OnWorkbenchChanged();
+        _ = SyncAsync();
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        self = DotNetObjectReference.Create(this);
+        mod = await JS.InvokeAsync<IJSObjectReference>("import", "./js/viewer.js");
+        await mod.InvokeVoidAsync("create", Id, self);
+        sentClear = W.ClearMeasuresVersion;
+        sentFit = W.FitVersion;
+        ready = true;
+        await SyncAsync();
+    }
+
+    private async Task SyncAsync()
+    {
+        if (!ready || mod is null) return;
+        if (syncing)
+        {
+            dirty = true;
+            return;
+        }
+        syncing = true;
+        try
+        {
+            do
+            {
+                dirty = false;
+                await SyncOnceAsync(mod);
+            }
+            while (dirty);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+        catch (ObjectDisposedException)
+        {
+        }
+        finally
+        {
+            syncing = false;
+        }
+    }
+
+    private async Task SyncOnceAsync(IJSObjectReference js)
+    {
+        if (!W.HasImage)
+        {
+            if (sentImage != -1)
+            {
+                sentImage = -1;
+                await js.InvokeVoidAsync("clear", Id);
+            }
+            return;
+        }
+        bool newImage = sentImage != W.ImageVersion;
+        if (newImage || (!W.IsColor && sentWindow != W.WindowVersion))
+        {
+            bool keep = !newImage;
+            sentImage = W.ImageVersion;
+            sentWindow = W.WindowVersion;
+            if (W.IsColor && W.Rgb is { } rgb) await js.InvokeVoidAsync("setImage", Id, W.ImageWidth, W.ImageHeight, rgb, 3, keep);
+            else if (W.RenderGray() is { } gray) await js.InvokeVoidAsync("setImage", Id, W.ImageWidth, W.ImageHeight, gray, 1, keep);
+        }
+        string tool = W.Tool == ViewerTool.Measure ? "measure" : "pan";
+        if (tool != sentTool)
+        {
+            sentTool = tool;
+            await js.InvokeVoidAsync("setTool", Id, tool);
+        }
+        var sp = W.Spacing;
+        string info = $"{W.SliceCount}|{sp?.Row}|{sp?.Column}|{sp?.Source}";
+        if (info != sentInfo)
+        {
+            sentInfo = info;
+            await js.InvokeVoidAsync("setInfo", Id, W.SliceCount, sp is null ? null : new { row = sp.Row, column = sp.Column, imager = sp.Source == PixelSpacingSource.ImagerPixelSpacing });
+        }
+        if (sentHeat != W.HeatmapVersion)
+        {
+            sentHeat = W.HeatmapVersion;
+            sentHeatStyle = $"{W.HeatmapOpacity}|{W.ShowHeatmap}";
+            if (W.Heatmap is { } h) await js.InvokeVoidAsync("setHeatmap", Id, h.Width, h.Height, h.Rgba, W.HeatmapOpacity, W.ShowHeatmap);
+            else await js.InvokeVoidAsync("setHeatmap", Id, 0, 0, Array.Empty<byte>(), W.HeatmapOpacity, false);
+        }
+        string style = $"{W.HeatmapOpacity}|{W.ShowHeatmap}";
+        if (style != sentHeatStyle)
+        {
+            sentHeatStyle = style;
+            await js.InvokeVoidAsync("setHeatStyle", Id, W.HeatmapOpacity, W.ShowHeatmap);
+        }
+        if (sentClear != W.ClearMeasuresVersion)
+        {
+            sentClear = W.ClearMeasuresVersion;
+            await js.InvokeVoidAsync("clearMeasures", Id);
+        }
+        if (sentFit != W.FitVersion)
+        {
+            sentFit = W.FitVersion;
+            await js.InvokeVoidAsync("fit", Id);
+        }
+    }
+
+    public async Task<string?> SnapshotAsync() => mod is null ? null : await mod.InvokeAsync<string?>("snapshot", Id);
+
+    private void OnSlider(ChangeEventArgs e)
+    {
+        if (int.TryParse(e.Value?.ToString(), out int i)) W.SetSlice(i);
+    }
+
+    [JSInvokable] public void OnScroll(int steps) => W.StepSlice(steps);
+
+    [JSInvokable] public void OnWindow(double dx, double dy) => W.AdjustWindow(dx, dy);
+
+    [JSInvokable] public void OnView(double zoom, int measures) => W.OnView(zoom, measures);
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        if (mod is not null)
+        {
+            try
+            {
+                await mod.InvokeVoidAsync("dispose", Id);
+                await mod.DisposeAsync();
+            }
+            catch (JSDisconnectedException)
+            {
+            }
+        }
+        self?.Dispose();
+    }
+}

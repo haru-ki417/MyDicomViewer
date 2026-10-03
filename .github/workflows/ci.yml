@@ -17,11 +17,27 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
-      - name: Restore
-        run: dotnet restore MyDicomViewer.slnx
-
       - name: Build
-        run: dotnet build MyDicomViewer.slnx --configuration Release --no-restore
+        run: |
+          dotnet build MyDicomViewer/MyDicomViewer.csproj --configuration Release
+          dotnet build MyDicomViewer.Tests/MyDicomViewer.Tests.csproj --configuration Release
 
       - name: Test
-        run: dotnet test --solution MyDicomViewer.slnx --configuration Release --no-build
+        run: dotnet test --project MyDicomViewer.Tests/MyDicomViewer.Tests.csproj --configuration Release --no-build
+
+  web:
+    # ブラウザー版（Blazor WebAssembly）がビルドできるかを確かめる
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Install WebAssembly tools
+        run: dotnet workload install wasm-tools
+
+      - name: Build
+        run: dotnet build MyDicomViewer.Web/MyDicomViewer.Web.csproj --configuration Release

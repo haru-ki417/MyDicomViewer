@@ -1,0 +1,58 @@
+@* 右「画像」: 濃度・画素間隔・匿名化して保存 *@
+@inherits WbComponent
+
+<section class="sec" data-sec="image">
+    <h3 class="sec-title">濃度（ウィンドウ）</h3>
+    @if (!W.HasImage)
+    {
+        <p class="small muted">画像を開くと調整できます。</p>
+    }
+    else if (W.IsColor)
+    {
+        <p class="small muted">カラー画像のため、濃度の調整はありません。</p>
+    }
+    else
+    {
+        <div class="preset-grid">
+            @foreach (var p in WindowPreset.All)
+            {
+                var preset = p;
+                <button class="chip @(W.SelectedPreset == preset ? "on" : "")" @onclick="() => W.ApplyPreset(preset)">
+                    <span>@preset.Name</span>
+                    @if (!preset.IsImageDefault)
+                    {
+                        <small>L @F(preset.Center, "0") / W @F(preset.Width, "0")</small>
+                    }
+                </button>
+            }
+        </div>
+        <div class="param-row"><span class="param-label">中心（L）</span><span class="value">@F(W.WindowCenter, "0")</span></div>
+        <input type="range" class="range" min="@F(W.CenterMinimum, "0")" max="@F(W.CenterMaximum, "0")" step="1" value="@F(W.WindowCenter, "0")" @oninput="OnCenter" aria-label="ウィンドウの中心" />
+        <div class="param-row"><span class="param-label">幅（W）</span><span class="value">@F(W.WindowWidth, "0")</span></div>
+        <input type="range" class="range" min="1" max="@F(W.WidthMaximum, "0")" step="1" value="@F(W.WindowWidth, "0")" @oninput="OnWidth" aria-label="ウィンドウの幅" />
+        <p class="small muted hover-only">画像の上で右ボタンを押したままドラッグしても変えられます（横: 幅 / 縦: 中心）。</p>
+    }
+
+    @if (W.HasImage)
+    {
+        <h3 class="sec-title">計測</h3>
+        <p class="small muted">@W.PixelSpacingText</p>
+        <p class="small muted">「計測」を選んで画像の上をドラッグすると、2 点間の距離を測れます。</p>
+
+        <h3 class="sec-title">匿名化して保存</h3>
+        <p class="small muted">DICOM 規格 PS3.15 の基本プロファイルで、患者名・ID・日付などの個人情報を削除・置換し、仮の ID を付けた DICOM を保存します（Windows 版がクラウドに送る前と同じ処理）。</p>
+        <button class="btn block" @onclick="W.SaveAnonymizedAsync"><Icon Name="shield" />匿名化した DICOM を保存</button>
+    }
+</section>
+
+@code {
+    private void OnCenter(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double v)) W.SetWindow(v, W.WindowWidth);
+    }
+
+    private void OnWidth(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double v)) W.SetWindow(W.WindowCenter, v);
+    }
+}

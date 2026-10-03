@@ -1,0 +1,54 @@
+<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+
+  <!--
+    ブラウザー版（Blazor WebAssembly）。DICOM の読み込み・表示・計測・匿名化・AI の前処理は、
+    Windows 版の MyDicomViewer.Core と同じソースを使う（Azure・OpenAI・ONNX Runtime の部品はブラウザーでは使わないので含めない）。
+    AI の推論は ONNX Runtime Web（WebAssembly）でブラウザーの中で行う。
+  -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>MyDicomViewer.Web</RootNamespace>
+    <AssemblyName>MyDicomViewer.Web</AssemblyName>
+    <Version>1.0.0</Version>
+    <InvariantGlobalization>true</InvariantGlobalization>
+    <BlazorWebAssemblyLoadAllGlobalizationData>false</BlazorWebAssemblyLoadAllGlobalizationData>
+    <WasmEnableWebcil>true</WasmEnableWebcil>
+    <OverrideHtmlAssetPlaceholders>true</OverrideHtmlAssetPlaceholders>
+    <ServiceWorkerAssetsManifest>service-worker-assets.js</ServiceWorkerAssetsManifest>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+  </PropertyGroup>
+
+  <!-- 公開するときは、画像の展開と前処理を速くするため WebAssembly にあらかじめ翻訳する（AOT） -->
+  <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <RunAOTCompilation>true</RunAOTCompilation>
+    <WasmStripILAfterAOT>true</WasmStripILAfterAOT>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="10.0.12" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="10.0.12" PrivateAssets="all" />
+    <PackageReference Include="fo-dicom" Version="5.2.6" />
+  </ItemGroup>
+
+  <!-- Windows 版と同じ処理（ソースを共有） -->
+  <ItemGroup>
+    <Compile Include="..\MyDicomViewer.Core\Ai\PneumoniaPreprocessor.cs" Link="Shared\Ai\PneumoniaPreprocessor.cs" />
+    <Compile Include="..\MyDicomViewer.Core\Ai\AiResultExporter.cs" Link="Shared\Ai\AiResultExporter.cs" />
+    <Compile Include="..\MyDicomViewer.Core\Dicom\PixelSpacing.cs" Link="Shared\Dicom\PixelSpacing.cs" />
+    <Compile Include="..\MyDicomViewer.Core\Dicom\DicomTagLister.cs" Link="Shared\Dicom\DicomTagLister.cs" />
+    <Compile Include="..\MyDicomViewer.Core\Dicom\DicomDeidentifier.cs" Link="Shared\Dicom\DicomDeidentifier.cs" />
+    <Compile Include="..\MyDicomViewer.Core\Imaging\*.cs" LinkBase="Shared\Imaging" />
+  </ItemGroup>
+
+  <!-- DICOM の部品は中で型を名前から探すので、使っていないように見えても削らない -->
+  <ItemGroup>
+    <TrimmerRootAssembly Include="fo-dicom.core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ServiceWorker Include="wwwroot\service-worker.js" PublishedContent="wwwroot\service-worker.published.js" />
+  </ItemGroup>
+
+</Project>

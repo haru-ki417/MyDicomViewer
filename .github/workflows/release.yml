@@ -31,8 +31,8 @@ jobs:
 
       - name: Test
         run: |
-          dotnet build MyDicomViewer.slnx --configuration Release
-          dotnet test --solution MyDicomViewer.slnx --configuration Release --no-build
+          dotnet build MyDicomViewer.Tests/MyDicomViewer.Tests.csproj --configuration Release
+          dotnet test --project MyDicomViewer.Tests/MyDicomViewer.Tests.csproj --configuration Release --no-build
 
       - name: Publish
         run: dotnet publish MyDicomViewer/MyDicomViewer.csproj -c Release -r win-x64 --self-contained true -o publish

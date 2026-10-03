@@ -5,6 +5,8 @@ PC 内で動く AI による胸部X線の肺炎スクリーニング、読影ソ
 
 > ⚠️ 本アプリは学習・ポートフォリオ目的で作成したものです。医療機器ではなく、診断に使用することはできません。
 
+**▶ ブラウザーで開く: https://haru-ki417.github.io/MyDicomViewer/** 　スマホ・タブレット・パソコンで、インストールなしで使えます（画像はブラウザーの中だけで読み、どこにも送りません）。
+
 ![AI スクリーニングの実行画面](docs/screenshot.png)
 
 *学習に使っていない公開画像（インフルエンザと H. influenzae による肺炎、主に右上葉の斑状浸潤影）に対して、肺炎所見の確率を推定し、AI が注目した領域を Grad-CAM で重ねて表示した例。ヒートマップは、医師の記載にある右上葉（画像の左上）に出ています。画像: Mikael Häggström, M.D.（[Wikimedia Commons](https://commons.wikimedia.org/wiki/File:Chest_radiograph_in_influensa_and_H_influenzae,_posteroanterior.jpg)、CC0）*
@@ -49,6 +51,7 @@ MyDicomViewer/
 │  ├─ Imaging/             正規化・リサイズ・ウィンドウ処理、ヒートマップ
 │  ├─ Cloud/ Reports/      Azure 連携、生成 AI レポート
 │  └─ Configuration/       設定の読み込み（ファイル → ユーザー設定 → 環境変数）
+├─ MyDicomViewer.Web/      ブラウザー版（Blazor WebAssembly。Core の処理のソースを共有、AI は ONNX Runtime Web）
 ├─ MyDicomViewer.Tests/    xUnit による単体テスト
 ├─ pneumonia-ai/           AI モデルの学習・ONNX 変換・評価（Python / Kaggle）
 └─ docs/                   モデルカード、スクリーンショット
@@ -62,6 +65,25 @@ MyDicomViewer/
 - **正直な評価**: 患者単位の分割、検証データでの閾値決定、信頼区間、判断根拠の位置の評価、限界の明記（モデルカード）
 - **セキュリティとプライバシー**: 匿名化してからクラウドへ保存、キーはソースコードに書かず暗号化して保存、パラメーター化クエリ、患者情報をログや外部 AI に送らない、配布物にキーが紛れ込んだらビルドを止める
 - **保守しやすい構成**: 処理を Core に分離して MVVM・依存性注入で組み立て、単体テストと GitHub Actions の CI で品質を確認
+
+## ブラウザー版（スマホ・タブレット・パソコン）
+
+https://haru-ki417.github.io/MyDicomViewer/ を開くだけで使えます。Windows 版と同じ処理のソース（`MyDicomViewer.Core` の濃度計算・画素間隔・タグ一覧・匿名化・AI の前処理）を Blazor WebAssembly で動かし、画面だけをブラウザー用に作りました。
+
+<table>
+<tr>
+<td width="74%"><img src="docs/web-desktop.png" alt="ブラウザー版（パソコン）"></td>
+<td><img src="docs/web-phone.png" alt="ブラウザー版（スマホ）"></td>
+</tr>
+<tr><td align="center">パソコン（見本の DICOM）</td><td align="center">スマホ</td></tr>
+</table>
+
+- **ビューア**: ファイル・フォルダ・ZIP を選ぶかドロップ。シリーズ分けと並べ方は Windows 版と同じ。ホイール・スライダーで送り、Ctrl + ホイール・2 本の指で拡大、右ドラッグで濃度、CT の濃度プリセット、四隅の情報、距離の計測、DICOM タグの一覧と検索。複数フレームの画像も 1 枚ずつ送れる
+- **匿名化して保存**: PS3.15 の基本プロファイルで匿名化した DICOM をその場で保存（Windows 版がクラウドに送る前と同じ処理）
+- **オンデバイス AI**: 胸部X線の肺炎スクリーニングを、**ONNX Runtime Web（WebAssembly）でブラウザーの中で推論**。前処理は Windows 版と同じ C#（`PneumoniaPreprocessor`）なので、同じモデルなら同じ入力になる。結果は Grad-CAM のヒートマップを重ねて表示し、DICOM（二次取込画像）として保存できる
+- **学習済みモデルはサイトに含めていません**（学習に使ったコンペのデータの利用条件に配慮）。Windows 版と同じ `pneumonia.onnx` と `model_meta.json` を「AI 解析」で選ぶと使えます。選んだモデルは、その端末のブラウザー（IndexedDB）にだけ保存します
+- 見本の DICOM（[samples](samples/)、CC0 の公開画像から作成・患者情報なし）をボタン 1 つで開ける
+- 圧縮 DICOM（JPEG・JPEG 2000 など）の展開、クラウド保存、生成 AI のレポートは Windows 版だけの機能（キーを安全に扱うため）
 
 ## インストール（利用者向け）
 
@@ -87,6 +109,8 @@ powershell -ExecutionPolicy Bypass -File .\tools\release.ps1
 ```
 
 開発時のキーは `MyDicomViewer/appsettings.Local.example.json` をコピーした `appsettings.Local.json`（Git 管理外・配布物には含まれない）か、環境変数 `MYDICOMVIEWER_Azure__CosmosPrimaryKey` などで設定できます。
+
+ブラウザー版は `dotnet run --project MyDicomViewer.Web` で開発用のサーバーが起動します（公開版の作成には `dotnet workload install wasm-tools` が必要）。main へのプッシュで GitHub Actions が GitHub Pages に公開します。
 
 AI モデルの学習・評価の手順は [pneumonia-ai/README.md](pneumonia-ai/README.md) を参照してください。
 

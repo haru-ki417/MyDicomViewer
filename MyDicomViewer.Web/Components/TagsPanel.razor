@@ -1,0 +1,46 @@
+@* 右「タグ」: DICOM タグの一覧と検索 *@
+@inherits WbComponent
+
+<section class="sec" data-sec="tags">
+    @if (!W.HasImage)
+    {
+        <p class="small muted">画像を開くと、DICOM のタグ（患者・検査・撮影の情報）を一覧できます。</p>
+    }
+    else
+    {
+        <input class="text" type="search" placeholder="タグ・名前・値で検索" value="@query" @oninput="e => query = e.Value?.ToString() ?? string.Empty" />
+        <div class="tag-table">
+            <table>
+                <thead><tr><th>タグ</th><th>名前</th><th>VR</th><th>値</th></tr></thead>
+                <tbody>
+                    @foreach (var t in Filtered)
+                    {
+                        <tr><td class="mono">@t.Tag</td><td style="padding-left:@(8 + t.Depth * 14)px">@t.Name</td><td class="mono">@t.Vr</td><td class="val">@t.Value</td></tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <p class="small muted">@W.CurrentName</p>
+    }
+</section>
+
+@code {
+    private string query = "";
+    private IReadOnlyList<DicomTagEntry> tags = [];
+    private DicomFile? cached;
+
+    private IEnumerable<DicomTagEntry> Filtered
+    {
+        get
+        {
+            if (!ReferenceEquals(cached, W.CurrentFile))
+            {
+                cached = W.CurrentFile;
+                tags = W.Tags();
+            }
+            if (string.IsNullOrWhiteSpace(query)) return tags;
+            string q = query.Trim();
+            return tags.Where(t => t.Tag.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Name.Contains(q, StringComparison.OrdinalIgnoreCase) || t.Value.Contains(q, StringComparison.OrdinalIgnoreCase));
+        }
+    }
+}

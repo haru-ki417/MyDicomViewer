@@ -1,0 +1,38 @@
+@* 左: 患者と、シリーズの一覧 *@
+@inherits WbComponent
+
+<section class="sec" data-sec="series">
+    @if (W.HasImage)
+    {
+        <div class="patient">
+            <div class="patient-name">@W.PatientName</div>
+            @if (W.ShowPatientIdLine)
+            {
+                <div class="patient-id">ID @W.PatientId</div>
+            }
+            <span class="mod-chip">@W.Modality</span>
+            @if (W.HasMultiplePatients)
+            {
+                <p class="small warn">複数の患者の画像を開いています。</p>
+            }
+        </div>
+    }
+    <div class="sec-head"><h3 class="sec-title">シリーズ</h3><span class="muted small">@W.Series.Count 件</span></div>
+    @if (W.Series.Count == 0)
+    {
+        <p class="small muted">まだ何も開いていません。</p>
+    }
+    <ul class="series-list">
+        @foreach (var s in W.Series)
+        {
+            var series = s;
+            <li>
+                <button class="series @(W.Selected == series ? "on" : "")" @onclick="() => W.SelectSeries(series)">
+                    <span class="series-patient">@series.PatientLabel</span>
+                    <span class="series-count">@series.Slices.Count 枚</span>
+                    <span class="series-desc"><b>@series.Modality</b> @series.Title</span>
+                </button>
+            </li>
+        }
+    </ul>
+</section>

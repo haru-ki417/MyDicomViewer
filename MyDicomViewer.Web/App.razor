@@ -1,0 +1,192 @@
+@* MyDicomViewer Web の画面全体（Windows 版と同じ並び）
+   広い画面: 上（ツールバー）| 左（患者・シリーズ）| 中（画像）| 右（画像・AI 解析・タグ）| 下（状態）
+   狭い画面: 上 | 画像 | 切りかえの列 | その内容 *@
+@inherits WbComponent
+@implements IAsyncDisposable
+@inject BrowserIo Io
+
+<div class="shell" id="drop-zone" data-empty="@(W.HasImage ? "no" : "yes")" data-panel="@mobilePanel">
+    <input type="file" id="pick-folder" class="hidden-input" webkitdirectory multiple tabindex="-1" aria-hidden="true" />
+    <input type="file" id="pick-files" class="hidden-input" multiple tabindex="-1" aria-hidden="true" />
+
+    <header class="topbar">
+        <div class="brand"><img class="logo" src="icons/icon.svg" alt="" /><span class="brand-name">MyDicomViewer</span><span class="brand-web">WEB</span></div>
+        <div class="toolbar">
+            <div class="menu-host">
+                <button class="tb" @onclick="() => openMenu = !openMenu" aria-haspopup="menu"><Icon Name="file" /><span class="hide-sm">開く</span><Icon Name="chevron" Small="true" /></button>
+                @if (openMenu)
+                {
+                    <div class="menu-backdrop" @onclick="() => openMenu = false"></div>
+                    <div class="menu" role="menu" @onclick="() => openMenu = false">
+                        <label class="menu-item" for="pick-files" role="menuitem">ファイルを開く<small>複数の DICOM、または ZIP（Ctrl+O）</small></label>
+                        @if (folderSupported)
+                        {
+                            <label class="menu-item" for="pick-folder" role="menuitem">フォルダを開く<small>下のフォルダも探します（Ctrl+Shift+O）</small></label>
+                        }
+                        <hr />
+                        <button class="menu-item" role="menuitem" @onclick="W.OpenSamplesAsync">見本の DICOM<small>胸部 X 線 3 枚（CC0 の公開画像、患者情報なし）</small></button>
+                    </div>
+                }
+            </div>
+            <span class="tb-sep"></span>
+            <button class="tb @(W.Tool == ViewerTool.Pan ? "on" : "")" disabled="@(!W.HasImage)" @onclick="() => W.SetTool(ViewerTool.Pan)" title="移動（V）"><Icon Name="pan" /><span class="hide-sm">移動</span></button>
+            <button class="tb @(W.Tool == ViewerTool.Measure ? "on" : "")" disabled="@(!W.HasImage)" @onclick="() => W.SetTool(ViewerTool.Measure)" title="計測（M）"><Icon Name="ruler" /><span class="hide-sm">計測</span></button>
+            <button class="tb" disabled="@(W.MeasureCount == 0)" @onclick="W.ClearMeasures" title="計測を消去"><Icon Name="x" /><span class="hide-md">計測を消去</span></button>
+            <span class="tb-sep"></span>
+            <button class="tb" disabled="@(!W.HasImage)" @onclick="W.Fit" title="全体表示（Esc）"><Icon Name="fit" /><span class="hide-md">全体表示</span></button>
+            <button class="tb" disabled="@(!W.HasImage)" @onclick="SaveView" title="表示中の画像を PNG で保存"><Icon Name="camera" /><span class="hide-md">画面を保存</span></button>
+        </div>
+        <button class="icon-btn about-btn" @onclick="() => showAbout = true" aria-label="このアプリについて"><Icon Name="info" /></button>
+    </header>
+
+    <aside class="left"><div class="side-body"><SeriesPanel /></div></aside>
+
+    <main class="center">
+        <ViewerPane @ref="viewer">
+            @if (!W.HasImage && !W.IsBusy)
+            {
+                <div class="empty">
+                    <img class="empty-mark" src="icons/icon.svg" alt="" />
+                    <h1>DICOM を開いてください</h1>
+                    <p class="muted">ファイル・フォルダ・ZIP を選ぶか、この画面にドラッグ＆ドロップします。画像はこのブラウザーの中だけで読み、どこにも送りません。</p>
+                    <div class="empty-actions">
+                        <label class="btn primary big" for="pick-files"><Icon Name="file" />ファイルを開く</label>
+                        @if (folderSupported)
+                        {
+                            <label class="btn big" for="pick-folder"><Icon Name="folder" />フォルダを開く</label>
+                        }
+                    </div>
+                    <div class="empty-sep"></div>
+                    <button class="btn big" @onclick="W.OpenSamplesAsync"><Icon Name="sample" />見本の DICOM で試す</button>
+                    <p class="muted small">見本は Wikimedia Commons で CC0 として公開されている胸部 X 線から作ったもので、患者情報は含まれていません。</p>
+                </div>
+            }
+            @if (W.IsBusy)
+            {
+                <div class="busy"><div class="busy-card"><div>@W.Status</div><div class="progress @(W.Progress < 0 ? "indeterminate" : "")"><span style="width:@(W.Progress < 0 ? "30" : F(W.Progress * 100, "0.#"))%"></span></div></div></div>
+            }
+            @if (W.Error is not null)
+            {
+                <div class="toast" role="alert"><Icon Name="warn" /><span>@W.Error</span><button class="icon-btn" aria-label="閉じる" @onclick="() => { W.Error = null; W.Notify(); }"><Icon Name="x" Small="true" /></button></div>
+            }
+        </ViewerPane>
+    </main>
+
+    <aside class="right">
+        <nav class="tabs" aria-label="右の欄">
+            <button class="@(W.Panel == SidePanel.Image ? "on" : "")" @onclick="() => SetPanel(SidePanel.Image)">画像</button>
+            <button class="ai @(W.Panel == SidePanel.Ai ? "on" : "")" @onclick="() => SetPanel(SidePanel.Ai)">AI 解析</button>
+            <button class="@(W.Panel == SidePanel.Tags ? "on" : "")" @onclick="() => SetPanel(SidePanel.Tags)">タグ</button>
+        </nav>
+        <div class="side-body" data-right="@W.Panel">
+            <ImagePanel />
+            <AiPanel />
+            <TagsPanel />
+        </div>
+    </aside>
+
+    <nav class="mobile-tabs" aria-label="切りかえ">
+        @foreach (var (key, label) in MobilePanels)
+        {
+            <button class="@(mobilePanel == key ? "on" : "")" @onclick="() => mobilePanel = key">@label</button>
+        }
+    </nav>
+
+    <footer class="statusbar">
+        <span class="status-text">@W.Status</span>
+        <span class="warn-text">研究・学習用。診断には使用できません</span>
+    </footer>
+
+    @if (showAbout)
+    {
+        <Modal Title="MyDicomViewer（ブラウザー版）について" OnClose="() => showAbout = false">
+            <p>医用画像の標準規格 DICOM を表示するビューアです。Windows 版と同じ処理（濃度の計算・画素間隔・タグ一覧・匿名化・AI の前処理）を、WebAssembly にしてブラウザーの中で動かしています。</p>
+            <ul class="about-list">
+                <li>開いた画像は、このブラウザーの中だけで扱い、どこにも送りません。</li>
+                <li>AI は ONNX Runtime Web（WebAssembly）でブラウザーの中で推論します。学習済みのモデルはサイトに含めていないので、Windows 版と同じモデルのファイルを選んで使います。</li>
+                <li>圧縮された DICOM（JPEG・JPEG 2000 など）は、ブラウザー版では展開できません。</li>
+                <li>クラウド保存・生成 AI のレポートは、キーを安全に扱うため Windows 版だけの機能です。</li>
+            </ul>
+            <dl class="keys">
+                <div><dt>ホイール</dt><dd>画像の送り（1 枚だけのときは拡大）。Ctrl + ホイールで拡大</dd></div>
+                <div><dt>左ドラッグ</dt><dd>移動（計測では距離）</dd></div>
+                <div><dt>右ドラッグ</dt><dd>濃度（横: 幅 / 縦: 中心）</dd></div>
+                <div><dt>2 本の指</dt><dd>拡大・移動。ダブルタップで全体表示</dd></div>
+                <div><dt>↑↓・PageUp/Down</dt><dd>画像の送り。Esc で全体表示</dd></div>
+            </dl>
+            <p class="small warn">学習・ポートフォリオ目的で作成したものです。医療機器ではなく、診断に使用することはできません。</p>
+            <div class="modal-foot">
+                <a class="btn" href="https://github.com/haru-ki417/MyDicomViewer" target="_blank" rel="noopener"><Icon Name="github" />GitHub</a>
+                <a class="btn" href="https://github.com/haru-ki417/MyDicomViewer/releases/latest" target="_blank" rel="noopener"><Icon Name="windows" />Windows 版</a>
+                <button class="btn primary" @onclick="() => showAbout = false">閉じる</button>
+            </div>
+        </Modal>
+    }
+</div>
+
+@code {
+    private static readonly (string Key, string Label)[] MobilePanels =
+        [("series", "シリーズ"), ("image", "画像"), ("ai", "AI 解析"), ("tags", "タグ")];
+
+    private DotNetObjectReference<App>? self;
+    private ViewerPane? viewer;
+    private bool openMenu, showAbout, folderSupported = true;
+    private string mobilePanel = "image";
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender) return;
+        self = DotNetObjectReference.Create(this);
+        await Io.InitFilesAsync(self, "drop-zone");
+        await Io.ListenKeysAsync(self);
+        folderSupported = await Io.FolderPickerSupportedAsync();
+        StateHasChanged();
+    }
+
+    private void SetPanel(SidePanel p)
+    {
+        W.Panel = p;
+        W.Notify();
+    }
+
+    [JSInvokable]
+    public async Task OnFilesPicked(int count, double totalBytes)
+    {
+        openMenu = false;
+        await W.LoadPickedAsync(count, (long)totalBytes);
+    }
+
+    [JSInvokable]
+    public async Task OnKey(string key)
+    {
+        switch (key)
+        {
+            case "open": await Io.ClickAsync("pick-files"); break;
+            case "open-folder": await Io.ClickAsync("pick-folder"); break;
+            case "next": W.StepSlice(1); break;
+            case "prev": W.StepSlice(-1); break;
+            case "reset": if (showAbout) { showAbout = false; StateHasChanged(); } else W.Fit(); break;
+            case "measure": if (W.HasImage) W.SetTool(ViewerTool.Measure); break;
+            case "pan": if (W.HasImage) W.SetTool(ViewerTool.Pan); break;
+            case "tags": SetPanel(SidePanel.Tags); mobilePanel = "tags"; break;
+        }
+    }
+
+    private async Task SaveView()
+    {
+        if (viewer is null) return;
+        var url = await viewer.SnapshotAsync();
+        if (url is null) return;
+        string name = Path.GetFileNameWithoutExtension(W.CurrentName.Split('/').Last());
+        await Io.DownloadDataUrlAsync($"{(string.IsNullOrEmpty(name) ? "image" : name)}.png", url);
+        W.Status = "表示中の画像を PNG で保存しました（四隅の患者情報は含めていません）";
+        W.Notify();
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        Dispose();
+        self?.Dispose();
+        await Io.DisposeAsync();
+    }
+}

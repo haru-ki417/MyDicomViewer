@@ -1,0 +1,110 @@
+@* 右「AI 解析」: 胸部 X 線の肺炎スクリーニング（ブラウザーの中で推論） *@
+@inherits WbComponent
+
+<section class="sec" data-sec="ai">
+    <h3 class="sec-title">肺炎スクリーニング</h3>
+    <p class="small muted">胸部X線（CR / DX）から肺炎所見の確率を推定し、判断の根拠をヒートマップで示します。処理はこのブラウザーの中だけで行い、画像は外部に送信しません。</p>
+
+    <div class="model-box">
+        <input type="file" id="model-files" class="hidden-input" accept=".onnx,.json" multiple tabindex="-1" aria-hidden="true" />
+        @if (W.Model is { } m)
+        {
+            <div class="model-line">
+                <Icon Name="ai" Small="true" />
+                <span>モデル: <b>@(string.IsNullOrEmpty(m.Name) ? "pneumonia.onnx" : m.Name)</b>（@SourceText(m.Source)@(m.Size > 0 ? $"、{m.Size / 1024.0 / 1024.0:0.0} MB" : "")）</span>
+            </div>
+            <div class="model-actions">
+                <label class="link-btn" for="model-files">別のモデルを選ぶ</label>
+                @if (m.Source == "saved")
+                {
+                    <button class="link-btn" @onclick="W.ForgetModelAsync"><Icon Name="trash" Small="true" />この端末から消す</button>
+                }
+            </div>
+        }
+        else
+        {
+            <p class="small">学習済みのモデルは、サイトに含めていません。Windows 版と同じ <code>pneumonia.onnx</code>（あれば <code>model_meta.json</code> も一緒に）を選んでください。選んだモデルはこの端末のブラウザーにだけ保存します。</p>
+            <label class="btn block" for="model-files"><Icon Name="file" />モデルのファイルを選ぶ</label>
+        }
+        @if (W.ModelError is not null)
+        {
+            <p class="note error"><Icon Name="warn" Small="true" />@W.ModelError</p>
+        }
+    </div>
+
+    <button class="btn ai block big" disabled="@(!W.HasImage || W.Model is null || W.IsScreening)" @onclick="() => W.RunScreeningAsync()">
+        @if (W.IsScreening)
+        {
+            <span class="spinner"></span><span>AI が解析中...</span>
+        }
+        else
+        {
+            <Icon Name="ai" /><span>@Workbench.ScreeningIdleText</span>
+        }
+    </button>
+
+    @if (W.AskModality)
+    {
+        <div class="note warn column">
+            <span>このモデルは胸部X線（CR/DX）用に学習されています。現在の画像のモダリティは @W.Modality のため、結果は参考になりません。それでも実行しますか？</span>
+            <div class="row-buttons"><button class="btn" @onclick="W.CancelModalityQuestion">やめる</button><button class="btn ai" @onclick="() => W.RunScreeningAsync(true)">実行する</button></div>
+        </div>
+    }
+
+    @if (W.Result is { } r)
+    {
+        <div class="result-card">
+            <div class="result-label">肺炎所見の推定確率</div>
+            <div class="result-value">@Workbench.FormatProbability(r.Probability)</div>
+            <div class="prob-bar">
+                <span class="fill @(r.IsPositive ? "pos" : "neg")" style="width:@F(r.Probability * 100, "0.#")%"></span>
+                <span class="thr" style="left:@F(r.Threshold * 100, "0.#")%"></span>
+            </div>
+            <div class="prob-axis"><span>0%</span><span>判定閾値 @F(r.Threshold * 100, "0")%</span><span>100%</span></div>
+            <div class="verdict @(r.IsPositive ? "pos" : "neg")">@(r.IsPositive ? "肺炎所見の可能性あり" : "肺炎を示唆する所見は弱い")</div>
+            <div class="small muted">@W.ScreeningDetail</div>
+        </div>
+
+        <h3 class="sec-title">ヒートマップ</h3>
+        <label class="check"><input type="checkbox" checked="@W.ShowHeatmap" @onchange="e => W.SetHeatmap(e.Value is true, W.HeatmapOpacity)" /><span>画像に重ねて表示する</span></label>
+        <p class="small muted">@(r.IsPositive || !W.ShowHeatmap ? "赤い領域ほど、AI の判断への寄与が大きい箇所です。" : "陰性の結果です。ヒートマップは画像の中で相対的に反応した場所を示すだけで、所見があることを意味しません。")</p>
+        <div class="param-row"><span class="param-label">濃さ</span><span class="value">@F(W.HeatmapOpacity * 100, "0")%</span></div>
+        <input type="range" class="range ai" min="0" max="1" step="0.05" value="@F(W.HeatmapOpacity, "0.##")" @oninput="OnOpacity" aria-label="ヒートマップの濃さ" />
+
+        <button class="btn block" disabled="@(!W.CanSaveAiResult)" @onclick="W.SaveAiResultAsync"><Icon Name="download" />結果を DICOM で保存（二次取込画像）</button>
+    }
+    <p class="small warn">研究・学習用です。診断には使用できません。</p>
+</section>
+
+@code {
+    [Inject] private BrowserIo Io { get; set; } = default!;
+    private DotNetObjectReference<Workbench>? wbRef;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            wbRef = DotNetObjectReference.Create(W);
+            await W.ProbeModelAsync();
+        }
+        if (wbRef is not null) await Io.BindModelPickerAsync("model-files", wbRef);
+    }
+
+    private static string SourceText(string source) => source switch
+    {
+        "site" => "このサイトのモデル",
+        "saved" => "この端末に保存",
+        _ => "このページを開いている間だけ",
+    };
+
+    private void OnOpacity(ChangeEventArgs e)
+    {
+        if (double.TryParse(e.Value?.ToString(), NumberStyles.Float, CultureInfo.InvariantCulture, out double v)) W.SetHeatmap(W.ShowHeatmap, v);
+    }
+
+    public override void Dispose()
+    {
+        base.Dispose();
+        wbRef?.Dispose();
+    }
+}
