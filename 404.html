@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>MyDicomViewer — DICOM ビューア</title>
+    <meta name="description" content="医用画像の標準規格 DICOM をブラウザーで表示するビューア。濃度調整・計測・タグ一覧・匿名化、胸部 X 線の AI スクリーニング（ブラウザーの中で推論）。画像はどこにも送りません。" />
+    <meta name="theme-color" content="#161C23" />
+    <base href="/MyDicomViewer/" />
+    <link rel="icon" type="image/svg+xml" href="icons/icon.svg" />
+    <link rel="apple-touch-icon" href="icons/icon-192.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="stylesheet" href="css/app.css" />
+    <script type="importmap">{
+  "imports": {
+    "./_framework/blazor.webassembly.js": "./_framework/blazor.webassembly.w3qd1tpl0e.js",
+    "./_framework/dotnet.native.js": "./_framework/dotnet.native.o33zq4dx58.js",
+    "./_framework/dotnet.js": "./_framework/dotnet.ppk2pb0ajz.js",
+    "./_framework/dotnet.runtime.js": "./_framework/dotnet.runtime.v06hirbjsv.js"
+  },
+  "scopes": {},
+  "integrity": {
+    "./_framework/blazor.webassembly.js": "sha256-lDXsDYFgm62F+YUvxES7IOTCXYpiHpU3uR45YdC6mq4=",
+    "./_framework/blazor.webassembly.w3qd1tpl0e.js": "sha256-lDXsDYFgm62F+YUvxES7IOTCXYpiHpU3uR45YdC6mq4=",
+    "./_framework/dotnet.js": "sha256-o+Uq6E2bpNyGgkUBGZuOs9YoeAAy+d54tPGUAqUYOgg=",
+    "./_framework/dotnet.native.js": "sha256-dPS8w57eWCg2w2nWBJgSrjDOi/UHSIzT8o2vxCgixWE=",
+    "./_framework/dotnet.native.o33zq4dx58.js": "sha256-dPS8w57eWCg2w2nWBJgSrjDOi/UHSIzT8o2vxCgixWE=",
+    "./_framework/dotnet.ppk2pb0ajz.js": "sha256-o+Uq6E2bpNyGgkUBGZuOs9YoeAAy+d54tPGUAqUYOgg=",
+    "./_framework/dotnet.runtime.js": "sha256-QbnqrZGHtGq7wudS17/AYEPpH9JkphrsyVllD6JHmds=",
+    "./_framework/dotnet.runtime.v06hirbjsv.js": "sha256-QbnqrZGHtGq7wudS17/AYEPpH9JkphrsyVllD6JHmds="
+  }
+}</script>
+</head>
+<body>
+    <div id="app">
+        <div class="boot">
+            <img class="boot-logo" src="icons/icon.svg" alt="" />
+            <div class="boot-name">MyDicomViewer</div>
+            <div class="boot-bar"><span></span></div>
+            <div class="boot-text">読み込んでいます… <span class="boot-pct"></span></div>
+            <noscript><p>このアプリを使うには JavaScript を有効にしてください。</p></noscript>
+        </div>
+    </div>
+    <div id="blazor-error-ui" role="alert">
+        問題が起きました。<a href="" class="reload">読み込み直す</a>
+        <a class="dismiss" aria-label="閉じる">✕</a>
+    </div>
+    <script src="_framework/blazor.webassembly.w3qd1tpl0e.js" autostart="false"></script>
+    <script src="js/boot.js"></script>
+</body>
+</html>

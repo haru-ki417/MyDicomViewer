@@ -1,0 +1,16 @@
+{
+  "name": "MyDicomViewer — DICOM ビューア",
+  "short_name": "MyDicomViewer",
+  "id": "./",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#161C23",
+  "theme_color": "#161C23",
+  "lang": "ja",
+  "icons": [
+    { "src": "icons/icon-192.png", "type": "image/png", "sizes": "192x192" },
+    { "src": "icons/icon-512.png", "type": "image/png", "sizes": "512x512" },
+    { "src": "icons/icon-512.png", "type": "image/png", "sizes": "512x512", "purpose": "maskable" }
+  ]
+}
